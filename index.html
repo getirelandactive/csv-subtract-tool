@@ -55,6 +55,8 @@
   <div id="output"></div>
 
   <script>
+    const DEBUG = false; // Set to true to enable console logs
+
     document.getElementById('processBtn').addEventListener('click', async () => {
       const fullFile = document.getElementById('fullCsv').files[0];
       const subsetFile = document.getElementById('subsetCsv').files[0];
@@ -71,19 +73,35 @@
 
       const keyField = detectKeyField(fullData[0]);
       if (!keyField) {
-        alert('No valid key field found. Expected one of: OBJECTID_1, Roll Number, TrailID');
+        alert('No valid key field found. Expected one of: ObjectID, GlobalID, ID, FID, OBJECTID_1, Roll Number, TrailID');
         return;
       }
 
-      const subsetKeys = new Set(subsetData.map(row => row[keyField]));
-      const remaining = fullData.filter(row => !subsetKeys.has(row[keyField]));
+      const subsetKeys = new Set(
+        subsetData.map(row => row[keyField]?.trim().toLowerCase())
+      );
+
+      const remaining = fullData.filter(row => {
+        const fullVal = row[keyField]?.trim().toLowerCase();
+        return !subsetKeys.has(fullVal);
+      });
+
+      if (DEBUG) {
+        console.log('Detected key field:', keyField);
+        console.log('Subset keys:', Array.from(subsetKeys));
+        console.log('Full data sample:', fullData.slice(0, 5).map(row => row[keyField]));
+        console.log('Remaining records:', remaining.length);
+      }
 
       renderTable(remaining);
       enableDownload(remaining);
     });
 
     function detectKeyField(row) {
-      const candidates = ['objectid_1', 'roll number', 'trailid'];
+      const candidates = [
+        'objectid', 'globalid', 'id', 'fid',
+        'objectid_1', 'roll number', 'trailid'
+      ];
       const headers = Object.keys(row).map(h => h.toLowerCase());
 
       for (let i = 0; i < headers.length; i++) {
