@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSV Subtraction Tool</title>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; max-width: 600px; margin: auto; }
+    label, input, select, button { display: block; margin: 1rem 0; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>CSV Subtraction Tool</h1>
+
+  <label>Full Dataset CSV:</label>
+  <input type="file" id="fullCsv" accept=".csv" />
+
+  <label>Subset CSV:</label>
+  <input type="file" id="subsetCsv" accept=".csv" />
+
+  <label>Unique Key Field:</label>
+  <input type="text" id="keyField" placeholder="e.g. OBJECTID or GlobalID" />
+
+  <button id="processBtn">Subtract Subset</button>
+
+  <div id="resultContainer" class="hidden">
+    <h2>Remaining Features</h2>
+    <table id="resultTable"></table>
+    <button id="downloadBtn">Download CSV</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    document.getElementById('processBtn').addEventListener('click', async () => {
+      const fullFile = document.getElementById('fullCsv').files[0];
+      const subsetFile = document.getElementById('subsetCsv').files[0];
+      const keyField = document.getElementById('keyField').value.trim();
+
+      if (!fullFile || !subsetFile || !keyField) {
+        alert('Please upload both CSVs and specify a key field.');
+        return;
+      }
+
+      const [fullData, subsetData] = await Promise.all([
+        parseCsv(fullFile),
+        parseCsv(subsetFile)
+      ]);
+
+      if (!fullData[0].hasOwnProperty(keyField)) {
+        alert(`Key field "${keyField}" not found in full dataset.`);
+        return;
+      }
+
+      const subsetKeys = new Set(subsetData.map(row => row[keyField]));
+      const remaining = fullData.filter(row => !subsetKeys.has(row[keyField]));
+
+      renderTable(remaining);
+      enableDownload(remaining);
+    });
+
+    function parseCsv(file) {
+      return new Promise((resolve, reject) => {
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: results => resolve(results.data),
+          error: err => reject(err)
+        });
+      });
+    }
+
+    function renderTable(data) {
+      const container = document.getElementById('resultContainer');
+      const table = document.getElementById('resultTable');
+      table.innerHTML = '';
+
+      if (data.length === 0) {
+        table.innerHTML = '<tr><td>No remaining features.</td></tr>';
+        container.classList.remove('hidden');
+        return;
+      }
+
+      const headers = Object.keys(data[0]);
+      const thead = document.createElement('thead');
+      const tbody = document.createElement('tbody');
+
+      thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+      data.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = headers.map(h => `<td>${row[h] || ''}</td>`).join('');
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      container.classList.remove('hidden');
+    }
+
+    function enableDownload(data) {
+      const btn = document.getElementById('downloadBtn');
+      btn.onclick = () => {
+        const csv = Papa.unparse(data);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'remaining_features.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+      };
+    }
+  </script>
+</body>
+</html>
