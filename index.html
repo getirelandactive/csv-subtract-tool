@@ -9,6 +9,7 @@
     td, th { border: 1px solid #ccc; padding: 6px 12px; }
     th { background-color: #f0f0f0; }
     .summary-table td:first-child { font-weight: bold; background-color: #f9f9f9; }
+    #downloadBtn { margin-top: 1em; padding: 8px 16px; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -21,8 +22,12 @@
 
   <div id="summary-container"></div>
   <div id="output-container"></div>
+  <button id="downloadBtn" style="display:none;" onclick="downloadCSV()">Download CSV</button>
 
   <script>
+    let lastHeaders = [];
+    let lastRemaining = [];
+
     function parseCSV(text) {
       const lines = text.trim().split('\n');
       const headers = lines[0].split(',').map(h => h.trim());
@@ -121,9 +126,27 @@
           return !subsetKeys.has(val);
         });
 
+        lastHeaders = full.headers;
+        lastRemaining = remaining;
+
         generateSummaryTable(full.rows, subset.rows, keyField, remaining);
         displayTable(full.headers, remaining);
+        document.getElementById('downloadBtn').style.display = 'inline-block';
       });
+    }
+
+    function downloadCSV() {
+      const csvContent = [lastHeaders.join(',')].concat(
+        lastRemaining.map(row => lastHeaders.map(h => row[h] ?? '').join(','))
+      ).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'remaining-records.csv';
+      a.click();
+      URL.revokeObjectURL(url);
     }
   </script>
 </body>
