@@ -1,80 +1,130 @@
-// csv-subtract-tool.js
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CSV Subtract Tool</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    table { border-collapse: collapse; margin-top: 1em; }
+    td, th { border: 1px solid #ccc; padding: 6px 12px; }
+    th { background-color: #f0f0f0; }
+    .summary-table td:first-child { font-weight: bold; background-color: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h1>CSV Subtract Tool</h1>
 
-const fs = require('fs');
-const path = require('path');
-const DEBUG = true; // Set to false to suppress debug logs
+  <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
+  <label>Subset CSV: <input type="file" id="subsetFile" accept=".csv" /></label><br><br>
+  <label>Key Field: <input type="text" id="keyField" value="ObjectId" /></label><br><br>
+  <button onclick="processCSV()">Process</button>
 
-function readCSV(filePath) {
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  const lines = raw.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const values = line.split(',').map(v => v.trim());
-    return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
-  });
-  return { headers, rows };
-}
+  <div id="summary-container"></div>
+  <div id="output-container"></div>
 
-function writeCSV(filePath, headers, rows) {
-  const content = [headers.join(',')].concat(
-    rows.map(row => headers.map(h => row[h] ?? '').join(','))
-  ).join('\n');
-  fs.writeFileSync(filePath, content, 'utf-8');
-}
-
-function summarize(fullRows, subsetRows, keyField) {
-  const fullKeys = fullRows.map(r => r[keyField]?.trim().toLowerCase());
-  const subsetKeys = subsetRows.map(r => r[keyField]?.trim().toLowerCase());
-
-  const fullSet = new Set(fullKeys);
-  const subsetSet = new Set(subsetKeys);
-
-  const duplicates = fullKeys.length - fullSet.size;
-  const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
-  const unmatchedKeys = subsetKeys.filter(k => !fullSet.has(k));
-
-  console.log('\n📊 Summary Table');
-  console.table({
-    'Full dataset size': fullRows.length,
-    'Subset size': subsetRows.length,
-    'Unique keys in full': fullSet.size,
-    'Duplicate keys in full': duplicates,
-    'Matching keys': matchedKeys.length,
-    'Unmatched keys': unmatchedKeys.length,
-    'Expected remaining': fullRows.length - matchedKeys.length,
-  });
-
-  if (DEBUG && unmatchedKeys.length > 0) {
-    console.log('⚠️ Subset keys not found in full dataset:', unmatchedKeys);
-  }
-
-  return new Set(subsetKeys);
-}
-
-function subtractCSV(fullPath, subsetPath, outputPath, keyField) {
-  const full = readCSV(fullPath);
-  const subset = readCSV(subsetPath);
-
-  const subsetKeys = summarize(full.rows, subset.rows, keyField);
-
-  const remaining = full.rows.filter(row => {
-    const val = row[keyField]?.trim().toLowerCase();
-    const keep = !subsetKeys.has(val);
-    if (DEBUG && !keep) {
-      console.log('Subtracting:', val);
+  <script>
+    function parseCSV(text) {
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const values = line.split(',').map(v => v.trim());
+        return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
+      });
+      return { headers, rows };
     }
-    return keep;
-  });
 
-  console.log(`\n✅ Remaining records: ${remaining.length}`);
-  writeCSV(outputPath, full.headers, remaining);
-  console.log(`📁 Output written to: ${outputPath}`);
-}
+    function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
+      const fullKeys = fullRows.map(r => r[keyField]?.trim().toLowerCase());
+      const subsetKeys = subsetRows.map(r => r[keyField]?.trim().toLowerCase());
 
-// 🧪 Example usage
-const fullCSV = path.resolve(__dirname, 'full.csv');
-const subsetCSV = path.resolve(__dirname, 'subset.csv');
-const outputCSV = path.resolve(__dirname, 'remaining.csv');
-const keyField = 'ObjectId';
+      const fullSet = new Set(fullKeys);
+      const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
+      const duplicates = fullKeys.length - fullSet.size;
 
-subtractCSV(fullCSV, subsetCSV, outputCSV, keyField);
+      const summaryData = {
+        'Matched Field': keyField,
+        'Records in Full Dataset': fullRows.length,
+        'Records in Subset': subsetRows.length,
+        'Matching Keys': matchedKeys.length,
+        'Duplicate Keys in Full': duplicates,
+        'Remaining Records': remainingRows.length
+      };
+
+      const table = document.createElement('table');
+      table.className = 'summary-table';
+
+      for (const [label, value] of Object.entries(summaryData)) {
+        const row = document.createElement('tr');
+        const labelCell = document.createElement('td');
+        const valueCell = document.createElement('td');
+        labelCell.textContent = label;
+        valueCell.textContent = value;
+        row.appendChild(labelCell);
+        row.appendChild(valueCell);
+        table.appendChild(row);
+      }
+
+      const container = document.getElementById('summary-container');
+      container.innerHTML = '';
+      container.appendChild(table);
+    }
+
+    function displayTable(headers, rows) {
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      headers.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        headers.forEach(h => {
+          const td = document.createElement('td');
+          td.textContent = row[h] ?? '';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      const container = document.getElementById('output-container');
+      container.innerHTML = '';
+      container.appendChild(table);
+    }
+
+    function processCSV() {
+      const fullFile = document.getElementById('fullFile').files[0];
+      const subsetFile = document.getElementById('subsetFile').files[0];
+      const keyField = document.getElementById('keyField').value.trim();
+
+      if (!fullFile || !subsetFile || !keyField) {
+        alert('Please select both files and enter a key field.');
+        return;
+      }
+
+      Promise.all([fullFile.text(), subsetFile.text()]).then(([fullText, subsetText]) => {
+        const full = parseCSV(fullText);
+        const subset = parseCSV(subsetText);
+
+        const subsetKeys = new Set(
+          subset.rows.map(r => r[keyField]?.trim().toLowerCase())
+        );
+
+        const remaining = full.rows.filter(r => {
+          const val = r[keyField]?.trim().toLowerCase();
+          return !subsetKeys.has(val);
+        });
+
+        generateSummaryTable(full.rows, subset.rows, keyField, remaining);
+        displayTable(full.headers, remaining);
+      });
+    }
+  </script>
+</body>
+</html>
