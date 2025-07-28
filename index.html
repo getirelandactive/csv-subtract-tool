@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CSV Subtract Tool</title>
+  <title>CSV Subtract Tool (ObjectId Test)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -41,7 +41,7 @@
   </style>
 </head>
 <body>
-  <h2>Subtract Subset from Full CSV</h2>
+  <h2>Subtract Subset from Full CSV (Testing ObjectId)</h2>
 
   <label>Full Dataset CSV:</label>
   <input type="file" id="fullCsv" accept=".csv" />
@@ -55,7 +55,7 @@
   <div id="output"></div>
 
   <script>
-    const DEBUG = false; // Set to true to enable console logs
+    const DEBUG = true; // Set to false to disable console logs
 
     document.getElementById('processBtn').addEventListener('click', async () => {
       const fullFile = document.getElementById('fullCsv').files[0];
@@ -71,9 +71,10 @@
         parseCsv(subsetFile)
       ]);
 
-      const keyField = detectKeyField(fullData[0]);
-      if (!keyField) {
-        alert('No valid key field found. Expected one of: ObjectID, GlobalID, ID, FID, OBJECTID_1, Roll Number, TrailID');
+      const keyField = 'ObjectId'; // Hardcoded for testing
+
+      if (!fullData[0].hasOwnProperty(keyField) || !subsetData[0].hasOwnProperty(keyField)) {
+        alert(`Field "${keyField}" not found in one or both files.`);
         return;
       }
 
@@ -87,7 +88,7 @@
       });
 
       if (DEBUG) {
-        console.log('Detected key field:', keyField);
+        console.log('Using key field:', keyField);
         console.log('Subset keys:', Array.from(subsetKeys));
         console.log('Full data sample:', fullData.slice(0, 5).map(row => row[keyField]));
         console.log('Remaining records:', remaining.length);
@@ -96,21 +97,6 @@
       renderTable(remaining);
       enableDownload(remaining);
     });
-
-    function detectKeyField(row) {
-      const candidates = [
-        'objectid', 'globalid', 'id', 'fid',
-        'objectid_1', 'roll number', 'trailid'
-      ];
-      const headers = Object.keys(row).map(h => h.toLowerCase());
-
-      for (let i = 0; i < headers.length; i++) {
-        if (candidates.includes(headers[i])) {
-          return Object.keys(row)[i]; // Preserve original casing
-        }
-      }
-      return null;
-    }
 
     function parseCsv(file) {
       return new Promise((resolve, reject) => {
