@@ -4,17 +4,29 @@
   <meta charset="UTF-8" />
   <title>CSV Subtract Tool</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; }
+    body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
     td, th { border: 1px solid #ccc; padding: 6px 12px; }
     th { background-color: #f0f0f0; }
     .summary-table td:first-child { font-weight: bold; background-color: #f9f9f9; }
     .button-row { margin-top: 1em; }
     .button-row button { margin-right: 10px; padding: 8px 16px; font-size: 14px; }
+    #downloadBtn { display: none; }
+    #refreshBtn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 6px 12px;
+      font-size: 14px;
+      background-color: #eee;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>CSV Subtract Tool</h1>
+  <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
   <label>Subset CSV: <input type="file" id="subsetFile" accept=".csv" /></label><br><br>
@@ -22,7 +34,7 @@
 
   <div class="button-row">
     <button onclick="processCSV()">Process</button>
-    <button id="downloadBtn" style="display:none;" onclick="downloadCSV()">Download CSV</button>
+    <button id="downloadBtn" onclick="downloadCSV()">Download CSV</button>
   </div>
 
   <div id="summary-container"></div>
@@ -151,6 +163,17 @@
       a.download = 'remaining-records.csv';
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    function refreshTool() {
+      document.getElementById('fullFile').value = '';
+      document.getElementById('subsetFile').value = '';
+      document.getElementById('keyField').value = 'ObjectId';
+      document.getElementById('summary-container').innerHTML = '';
+      document.getElementById('output-container').innerHTML = '';
+      document.getElementById('downloadBtn').style.display = 'none';
+      lastHeaders = [];
+      lastRemaining = [];
     }
   </script>
 </body>
