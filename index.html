@@ -1,175 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CSV Subtract Tool (ObjectId Test)</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 1rem;
-      max-width: 600px;
-      margin: auto;
+// csv-subtract-tool.js
+
+const fs = require('fs');
+const path = require('path');
+const DEBUG = true; // Set to false to suppress debug logs
+
+function readCSV(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  const lines = raw.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(',').map(v => v.trim());
+    return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
+  });
+  return { headers, rows };
+}
+
+function writeCSV(filePath, headers, rows) {
+  const content = [headers.join(',')].concat(
+    rows.map(row => headers.map(h => row[h] ?? '').join(','))
+  ).join('\n');
+  fs.writeFileSync(filePath, content, 'utf-8');
+}
+
+function summarize(fullRows, subsetRows, keyField) {
+  const fullKeys = fullRows.map(r => r[keyField]?.trim().toLowerCase());
+  const subsetKeys = subsetRows.map(r => r[keyField]?.trim().toLowerCase());
+
+  const fullSet = new Set(fullKeys);
+  const subsetSet = new Set(subsetKeys);
+
+  const duplicates = fullKeys.length - fullSet.size;
+  const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
+  const unmatchedKeys = subsetKeys.filter(k => !fullSet.has(k));
+
+  console.log('\n📊 Summary Table');
+  console.table({
+    'Full dataset size': fullRows.length,
+    'Subset size': subsetRows.length,
+    'Unique keys in full': fullSet.size,
+    'Duplicate keys in full': duplicates,
+    'Matching keys': matchedKeys.length,
+    'Unmatched keys': unmatchedKeys.length,
+    'Expected remaining': fullRows.length - matchedKeys.length,
+  });
+
+  if (DEBUG && unmatchedKeys.length > 0) {
+    console.log('⚠️ Subset keys not found in full dataset:', unmatchedKeys);
+  }
+
+  return new Set(subsetKeys);
+}
+
+function subtractCSV(fullPath, subsetPath, outputPath, keyField) {
+  const full = readCSV(fullPath);
+  const subset = readCSV(subsetPath);
+
+  const subsetKeys = summarize(full.rows, subset.rows, keyField);
+
+  const remaining = full.rows.filter(row => {
+    const val = row[keyField]?.trim().toLowerCase();
+    const keep = !subsetKeys.has(val);
+    if (DEBUG && !keep) {
+      console.log('Subtracting:', val);
     }
-    label {
-      display: block;
-      margin-top: 1rem;
-      font-weight: bold;
-    }
-    input[type="file"] {
-      margin-top: 0.5rem;
-    }
-    button {
-      margin-top: 1.5rem;
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-    }
-    table {
-      margin-top: 2rem;
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 0.5rem;
-      text-align: left;
-    }
-    #downloadBtn {
-      margin-top: 1rem;
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <h2>Subtract Subset from Full CSV (Testing ObjectId)</h2>
+    return keep;
+  });
 
-  <label>Full Dataset CSV:</label>
-  <input type="file" id="fullCsv" accept=".csv" />
+  console.log(`\n✅ Remaining records: ${remaining.length}`);
+  writeCSV(outputPath, full.headers, remaining);
+  console.log(`📁 Output written to: ${outputPath}`);
+}
 
-  <label>Subset CSV:</label>
-  <input type="file" id="subsetCsv" accept=".csv" />
+// 🧪 Example usage
+const fullCSV = path.resolve(__dirname, 'full.csv');
+const subsetCSV = path.resolve(__dirname, 'subset.csv');
+const outputCSV = path.resolve(__dirname, 'remaining.csv');
+const keyField = 'ObjectId';
 
-  <button id="processBtn">Process</button>
-  <button id="downloadBtn">Download Result</button>
-
-  <div id="output"></div>
-
-  <script>
-    const DEBUG = true; // Set to false to disable console logs
-
-    document.getElementById('processBtn').addEventListener('click', async () => {
-      const fullFile = document.getElementById('fullCsv').files[0];
-      const subsetFile = document.getElementById('subsetCsv').files[0];
-
-      if (!fullFile || !subsetFile) {
-        alert('Please upload both CSVs.');
-        return;
-      }
-
-      const [fullData, subsetData] = await Promise.all([
-        parseCsv(fullFile),
-        parseCsv(subsetFile)
-      ]);
-
-      const keyField = 'ObjectId'; // Hardcoded for testing
-
-      if (!fullData[0].hasOwnProperty(keyField) || !subsetData[0].hasOwnProperty(keyField)) {
-        alert(`Field "${keyField}" not found in one or both files.`);
-        return;
-      }
-
-      const subsetKeys = new Set(
-        subsetData.map(row => row[keyField]?.trim().toLowerCase())
-      );
-
-      const remaining = fullData.filter(row => {
-        const fullVal = row[keyField]?.trim().toLowerCase();
-        return !subsetKeys.has(fullVal);
-      });
-
-      if (DEBUG) {
-        console.log('Using key field:', keyField);
-        console.log('Subset keys:', Array.from(subsetKeys));
-        console.log('Full data sample:', fullData.slice(0, 5).map(row => row[keyField]));
-        console.log('Remaining records:', remaining.length);
-      }
-
-      renderTable(remaining);
-      enableDownload(remaining);
-    });
-
-    function parseCsv(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const lines = reader.result.split(/\r?\n/).filter(line => line.trim() !== '');
-          const headers = lines[0].split(',');
-          const data = lines.slice(1).map(line => {
-            const values = line.split(',');
-            const row = {};
-            headers.forEach((h, i) => row[h.trim()] = values[i]?.trim() || '');
-            return row;
-          });
-          resolve(data);
-        };
-        reader.onerror = reject;
-        reader.readAsText(file);
-      });
-    }
-
-    function renderTable(data) {
-      const output = document.getElementById('output');
-      output.innerHTML = '';
-
-      if (data.length === 0) {
-        output.textContent = 'No remaining records.';
-        return;
-      }
-
-      const table = document.createElement('table');
-      const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-
-      Object.keys(data[0]).forEach(header => {
-        const th = document.createElement('th');
-        th.textContent = header;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      const tbody = document.createElement('tbody');
-      data.forEach(row => {
-        const tr = document.createElement('tr');
-        Object.values(row).forEach(value => {
-          const td = document.createElement('td');
-          td.textContent = value;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      output.appendChild(table);
-    }
-
-    function enableDownload(data) {
-      const btn = document.getElementById('downloadBtn');
-      btn.style.display = 'inline-block';
-
-      btn.onclick = () => {
-        const headers = Object.keys(data[0]);
-        const rows = data.map(row => headers.map(h => `"${row[h]}"`).join(','));
-        const csvContent = [headers.join(','), ...rows].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'remaining_records.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-    }
-  </script>
-</body>
-</html>
+subtractCSV(fullCSV, subsetCSV, outputCSV, keyField);
