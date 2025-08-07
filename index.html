@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.5</title>
+  <title>CSV Subtract Tool v1.6</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.5</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.6</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -40,18 +40,22 @@
   <div id="output-container"></div>
   <div id="diagnostic-container"></div>
 
+  <!-- PapaParse CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
   <script>
     let lastHeaders = [];
     let lastRemaining = [];
 
-    function parseCSV(text) {
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',').map(h => h.trim());
-      const rows = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
-        return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
+    function parseCSVWithPapa(text) {
+      const parsed = Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true
       });
-      return { headers, rows };
+      return {
+        headers: parsed.meta.fields,
+        rows: parsed.data
+      };
     }
 
     function findHeader(headers, targetName) {
@@ -165,8 +169,8 @@
       }
 
       Promise.all([fullFile.text(), subsetFile.text()]).then(([fullText, subsetText]) => {
-        const full = parseCSV(fullText);
-        const subset = parseCSV(subsetText);
+        const full = parseCSVWithPapa(fullText);
+        const subset = parseCSVWithPapa(subsetText);
 
         const keyFieldName = 'objectid';
         const fullKeyField = findHeader(full.headers, keyFieldName);
@@ -208,7 +212,7 @@
 
     function downloadCSV() {
       const csvContent = [lastHeaders.join(',')].concat(
-        lastRemaining.map(row => lastHeaders.map(h => row[h] ?? '').join(','))
+        lastRemaining.map(row => lastHeaders.map(h => `"${(row[h] ?? '').replace(/"/g, '""')}"`).join(','))
       ).join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -226,7 +230,7 @@
       document.getElementById('summary-container').innerHTML = '';
       document.getElementById('output-container').innerHTML = '';
       document.getElementById('diagnostic-container').innerHTML = '';
-      document.getElementById('downloadBtn').style.display = 'none';
+      document.getElementById('downloadBtn').style.displaydocument.getElementById('downloadBtn').style.display = 'none';
       lastHeaders = [];
       lastRemaining = [];
     }
