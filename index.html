@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.2</title>
+  <title>CSV Subtract Tool v1.3</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.2</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.3</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -51,6 +51,11 @@
         return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
       });
       return { headers, rows };
+    }
+
+    function findHeader(headers, targetName) {
+      const lowerTarget = targetName.toLowerCase();
+      return headers.find(h => h.trim().toLowerCase() === lowerTarget);
     }
 
     function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
@@ -131,35 +136,37 @@
         const full = parseCSV(fullText);
         const subset = parseCSV(subsetText);
 
-        const keyField = 'objectid';
+        const keyFieldName = 'objectid';
+        const fullKeyField = findHeader(full.headers, keyFieldName);
+        const subsetKeyField = findHeader(subset.headers, keyFieldName);
 
-        if (!full.headers.includes(keyField)) {
-          alert(`Key field "${keyField}" not found in full dataset.`);
+        if (!fullKeyField) {
+          alert(`Key field "${keyFieldName}" not found in full dataset.`);
           console.warn('Available headers:', full.headers);
           return;
         }
 
-        if (!subset.headers.includes(keyField)) {
-          alert(`Key field "${keyField}" not found in subset dataset.`);
+        if (!subsetKeyField) {
+          alert(`Key field "${keyFieldName}" not found in subset dataset.`);
           console.warn('Available headers:', subset.headers);
           return;
         }
 
-        console.log(`Using key field: "${keyField}"`);
+        console.log(`Using key field: "${fullKeyField}"`);
 
         const subsetKeys = new Set(
-          subset.rows.map(r => (r[keyField] || '').trim().toLowerCase())
+          subset.rows.map(r => (r[subsetKeyField] || '').trim().toLowerCase())
         );
 
         const remaining = full.rows.filter(r => {
-          const val = (r[keyField] || '').trim().toLowerCase();
+          const val = (r[fullKeyField] || '').trim().toLowerCase();
           return val && !subsetKeys.has(val);
         });
 
         lastHeaders = full.headers;
         lastRemaining = remaining;
 
-        generateSummaryTable(full.rows, subset.rows, keyField, remaining);
+        generateSummaryTable(full.rows, subset.rows, fullKeyField, remaining);
         displayTable(full.headers, remaining);
         document.getElementById('downloadBtn').style.display = 'inline-block';
       });
