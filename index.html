@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -158,7 +157,6 @@
       container.innerHTML = '';
       container.appendChild(table);
     }
-
     function processCSV() {
       const fullFile = document.getElementById('fullFile').files[0];
       const subsetFile = document.getElementById('subsetFile').files[0];
@@ -231,4 +229,19 @@
       a.href = url;
       a.download = 'remaining-records.csv';
       a.click();
-      URL
+      URL.revokeObjectURL(url);
+    }
+
+    function refreshTool() {
+      document.getElementById('fullFile').value = '';
+      document.getElementById('subsetFile').value = '';
+      document.getElementById('summary-container').innerHTML = '';
+      document.getElementById('debug-container').innerHTML = '';
+      document.getElementById('output-container').innerHTML = '';
+      document.getElementById('downloadBtn').style.display = 'none';
+      lastHeaders = [];
+      lastRemaining = [];
+    }
+  </script>
+</body>
+</html>
