@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.4</title>
+  <title>CSV Subtract Tool v1.5</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.4</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.5</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -57,6 +57,14 @@
     function findHeader(headers, targetName) {
       const lowerTarget = targetName.toLowerCase();
       return headers.find(h => h.trim().toLowerCase() === lowerTarget);
+    }
+
+    function findDuplicates(keys) {
+      const freq = {};
+      keys.forEach(k => {
+        freq[k] = (freq[k] || 0) + 1;
+      });
+      return Object.keys(freq).filter(k => freq[k] > 1);
     }
 
     function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows, matchedKeys, duplicateKeys) {
@@ -181,9 +189,7 @@
 
         const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
         const unmatchedKeys = subsetKeys.filter(k => !fullSet.has(k));
-
-        const duplicates = fullKeys.filter((k, i, arr) => arr.indexOf(k) !== i);
-        const duplicateSet = [...new Set(duplicates)];
+        const duplicateSet = findDuplicates(fullKeys);
 
         const remaining = full.rows.filter(r => {
           const val = (r[fullKeyField] || '').trim().toLowerCase();
