@@ -39,193 +39,192 @@
   <div id="summary-container"></div>
   <div id="debug-container" style="margin-top:2em;"></div>
   <div id="output-container"></div>
+<script>
+  let lastHeaders = [];
+  let lastRemaining = [];
 
-  <script>
-    let lastHeaders = [];
-    let lastRemaining = [];
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim());
+      return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
+    });
+    return { headers, rows };
+  }
 
-    function parseCSV(text) {
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',').map(h => h.trim());
-      const rows = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
-        return Object.fromEntries(headers.map((h, i) => [h, values[i]]));
-      });
-      return { headers, rows };
+  function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
+    const fullKeys = fullRows.map(r => String(r[keyField] || '').trim());
+    const subsetKeys = subsetRows.map(r => String(r[keyField] || '').trim());
+
+    const fullSet = new Set(fullKeys);
+    const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
+    const duplicates = fullKeys.length - fullSet.size;
+
+    const summaryData = {
+      'Matched Field': keyField,
+      'Records in Full Dataset': fullRows.length,
+      'Records in Subset': subsetRows.length,
+      'Matching Keys': matchedKeys.length,
+      'Duplicate Keys in Full': duplicates,
+      'Remaining Records': remainingRows.length
+    };
+
+    const table = document.createElement('table');
+    table.className = 'summary-table';
+
+    for (const [label, value] of Object.entries(summaryData)) {
+      const row = document.createElement('tr');
+      const labelCell = document.createElement('td');
+      const valueCell = document.createElement('td');
+      labelCell.textContent = label;
+      valueCell.textContent = value;
+      row.appendChild(labelCell);
+      row.appendChild(valueCell);
+      table.appendChild(row);
     }
 
-    function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
-      const fullKeys = fullRows.map(r => (r[keyField] || '').trim());
-      const subsetKeys = subsetRows.map(r => (r[keyField] || '').trim());
+    const container = document.getElementById('summary-container');
+    container.innerHTML = '';
+    container.appendChild(table);
+  }
 
-      const fullSet = new Set(fullKeys);
-      const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
-      const duplicates = fullKeys.length - fullSet.size;
-
-      const summaryData = {
-        'Matched Field': keyField,
-        'Records in Full Dataset': fullRows.length,
-        'Records in Subset': subsetRows.length,
-        'Matching Keys': matchedKeys.length,
-        'Duplicate Keys in Full': duplicates,
-        'Remaining Records': remainingRows.length
-      };
-
+  function generateDebugTable(fullKeys = [], subsetKeys = [], matchedKeys = [], remainingKeys = []) {
+    try {
       const table = document.createElement('table');
       table.className = 'summary-table';
 
-      for (const [label, value] of Object.entries(summaryData)) {
-        const row = document.createElement('tr');
-        const labelCell = document.createElement('td');
-        const valueCell = document.createElement('td');
-        labelCell.textContent = label;
-        valueCell.textContent = value;
-        row.appendChild(labelCell);
-        row.appendChild(valueCell);
-        table.appendChild(row);
-      }
-
-      const container = document.getElementById('summary-container');
-      container.innerHTML = '';
-      container.appendChild(table);
-    }
-
-    function generateDebugTable(fullKeys = [], subsetKeys = [], matchedKeys = [], remainingKeys = []) {
-      try {
-        const table = document.createElement('table');
-        table.className = 'summary-table';
-
-        const headerRow = document.createElement('tr');
-        ['Key', 'In Full CSV', 'In Subset CSV', 'Matched', 'Remaining'].forEach(label => {
-          const th = document.createElement('th');
-          th.textContent = label;
-          headerRow.appendChild(th);
-        });
-        table.appendChild(headerRow);
-
-        const allKeys = Array.from(new Set([...fullKeys, ...subsetKeys])).sort();
-
-        allKeys.forEach(key => {
-          const tr = document.createElement('tr');
-          const inFull = fullKeys.includes(key);
-          const inSubset = subsetKeys.includes(key);
-          const isMatched = matchedKeys.includes(key);
-          const isRemaining = remainingKeys.includes(key);
-
-          [key, inFull, inSubset, isMatched, isRemaining].forEach(val => {
-            const td = document.createElement('td');
-            td.textContent = typeof val === 'boolean' ? (val ? '✔️' : '') : val;
-            tr.appendChild(td);
-          });
-
-          table.appendChild(tr);
-        });
-
-        const container = document.getElementById('debug-container');
-        container.innerHTML = '<h3>🔍 Debug Key Comparison</h3>';
-        container.appendChild(table);
-      } catch (err) {
-        console.error('Error generating debug table:', err);
-      }
-    }
-
-    function displayTable(headers, rows) {
-      const table = document.createElement('table');
-      const thead = document.createElement('thead');
       const headerRow = document.createElement('tr');
-      headers.forEach(h => {
+      ['Key', 'In Full CSV', 'In Subset CSV', 'Matched', 'Remaining'].forEach(label => {
         const th = document.createElement('th');
-        th.textContent = h;
+        th.textContent = label;
         headerRow.appendChild(th);
       });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
+      table.appendChild(headerRow);
 
-      const tbody = document.createElement('tbody');
-      rows.forEach(row => {
+      const allKeys = Array.from(new Set([...fullKeys, ...subsetKeys])).sort();
+
+      allKeys.forEach(key => {
         const tr = document.createElement('tr');
-        headers.forEach(h => {
+        const inFull = fullKeys.includes(key);
+        const inSubset = subsetKeys.includes(key);
+        const isMatched = matchedKeys.includes(key);
+        const isRemaining = remainingKeys.includes(key);
+
+        [key, inFull, inSubset, isMatched, isRemaining].forEach(val => {
           const td = document.createElement('td');
-          td.textContent = row[h] ?? '';
+          td.textContent = typeof val === 'boolean' ? (val ? '✔️' : '') : val;
           tr.appendChild(td);
         });
-        tbody.appendChild(tr);
+
+        table.appendChild(tr);
       });
-      table.appendChild(tbody);
 
-      const container = document.getElementById('output-container');
-      container.innerHTML = '';
+      const container = document.getElementById('debug-container');
+      container.innerHTML = '<h3>🔍 Debug Key Comparison</h3>';
       container.appendChild(table);
+    } catch (err) {
+      console.error('Error generating debug table:', err);
     }
-    function processCSV() {
-      const fullFile = document.getElementById('fullFile').files[0];
-      const subsetFile = document.getElementById('subsetFile').files[0];
+  }
 
-      if (!fullFile || !subsetFile) {
-        alert('Please select both files.');
+  function displayTable(headers, rows) {
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headers.forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+    rows.forEach(row => {
+      const tr = document.createElement('tr');
+      headers.forEach(h => {
+        const td = document.createElement('td');
+        td.textContent = row[h] ?? '';
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    const container = document.getElementById('output-container');
+    container.innerHTML = '';
+    container.appendChild(table);
+  }
+
+  function processCSV() {
+    const fullFile = document.getElementById('fullFile').files[0];
+    const subsetFile = document.getElementById('subsetFile').files[0];
+
+    if (!fullFile || !subsetFile) {
+      alert('Please select both files.');
+      return;
+    }
+
+    Promise.all([fullFile.text(), subsetFile.text()]).then(([fullText, subsetText]) => {
+      const full = parseCSV(fullText);
+      const subset = parseCSV(subsetText);
+
+      const keyField = full.headers.find(h => h.trim().toLowerCase() === 'objectid');
+
+      if (!keyField) {
+        alert('The "ObjectId" field was not found in the full dataset.\nHeaders found:\n' + full.headers.join(', '));
+        console.warn('Available headers:', full.headers);
         return;
       }
 
-      Promise.all([fullFile.text(), subsetFile.text()]).then(([fullText, subsetText]) => {
-        const full = parseCSV(fullText);
-        const subset = parseCSV(subsetText);
+      console.log(`Using key field: "${keyField}"`);
 
-        const keyField = full.headers.find(h => h.trim().toLowerCase() === 'objectid');
-
-        if (!keyField) {
-          alert('The "ObjectId" field was not found in the full dataset.\nHeaders found:\n' + full.headers.join(', '));
-          console.warn('Available headers:', full.headers);
-          return;
-        }
-
-        console.log(`Using key field: "${keyField}"`);
-
-        const fullKeys = full.rows.map(r => (r[keyField] || '').trim());
-        const subsetKeys = subset.rows.map(r => (r[keyField] || '').trim());
-        const matchedKeys = subsetKeys.filter(k => fullKeys.includes(k));
-        const remaining = full.rows.filter(r => {
-          const val = (r[keyField] || '').trim();
-          return val && !subsetKeys.includes(val);
-        });
-        const remainingKeys = remaining.map(r => (r[keyField] || '').trim());
-
-        lastHeaders = full.headers;
-        lastRemaining = remaining;
-
-        generateSummaryTable(full.rows, subset.rows, keyField, remaining);
-        generateDebugTable(fullKeys, subsetKeys, matchedKeys, remainingKeys);
-        displayTable(full.headers, remaining);
-        document.getElementById('downloadBtn').style.display = 'inline-block';
-      }).catch(err => {
-        console.error('Error processing CSV files:', err);
-        alert('Something went wrong while processing the files. Check the console for details.');
+      const fullKeys = full.rows.map(r => String(r[keyField] || '').trim());
+      const subsetKeys = subset.rows.map(r => String(r[keyField] || '').trim());
+      const matchedKeys = subsetKeys.filter(k => fullKeys.includes(k));
+      const remaining = full.rows.filter(r => {
+        const val = String(r[keyField] || '').trim();
+        return val && !subsetKeys.includes(val);
       });
-    }
+      const remainingKeys = remaining.map(r => String(r[keyField] || '').trim());
 
-    function downloadCSV() {
-      const csvContent = [lastHeaders.join(',')].concat(
-        lastRemaining.map(row => lastHeaders.map(h => row[h] ?? '').join(','))
-      ).join('\n');
+      lastHeaders = full.headers;
+      lastRemaining = remaining;
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'remaining-records.csv';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+      generateSummaryTable(full.rows, subset.rows, keyField, remaining);
+      generateDebugTable(fullKeys, subsetKeys, matchedKeys, remainingKeys);
+      displayTable(full.headers, remaining);
+      document.getElementById('downloadBtn').style.display = 'inline-block';
+    }).catch(err => {
+      console.error('Error processing CSV files:', err);
+      alert('Something went wrong while processing the files. Check the console for details.');
+    });
+  }
+  function downloadCSV() {
+    const csvContent = [lastHeaders.join(',')].concat(
+      lastRemaining.map(row => lastHeaders.map(h => row[h] ?? '').join(','))
+    ).join('\n');
 
-    function refreshTool() {
-      document.getElementById('fullFile').value = '';
-      document.getElementById('subsetFile').value = '';
-      document.getElementById('summary-container').innerHTML = '';
-      document.getElementById('debug-container').innerHTML = '';
-      document.getElementById('output-container').innerHTML = '';
-      document.getElementById('downloadBtn').style.display = 'none';
-      lastHeaders = [];
-      lastRemaining = [];
-    }
-  </script>
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'remaining-records.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function refreshTool() {
+    document.getElementById('fullFile').value = '';
+    document.getElementById('subsetFile').value = '';
+    document.getElementById('summary-container').innerHTML = '';
+    document.getElementById('debug-container').innerHTML = '';
+    document.getElementById('output-container').innerHTML = '';
+    document.getElementById('downloadBtn').style.display = 'none';
+    lastHeaders = [];
+    lastRemaining = [];
+  }
+</script>
 </body>
 </html>
