@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size:0.8em; color:#666;">(v2.4)</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size:0.8em; color:#666;">(v2.4b)</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -58,8 +58,8 @@
   }
 
   function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
-    const fullKeys = fullRows.map(r => normalize(r[keyField]));
-    const subsetKeys = subsetRows.map(r => normalize(r[keyField]));
+    const fullKeys = fullRows.map(r => normalize(r[keyField])).filter(k => k !== '');
+    const subsetKeys = subsetRows.map(r => normalize(r[keyField])).filter(k => k !== '');
 
     const fullSet = new Set(fullKeys);
     const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
@@ -184,14 +184,19 @@
 
       console.log(`Using key field: "${keyField}"`);
 
-      const fullKeys = full.rows.map(r => normalize(r[keyField]));
-      const subsetKeys = subset.rows.map(r => normalize(r[keyField]));
+      const fullKeys = full.rows.map(r => normalize(r[keyField])).filter(k => k !== '');
+      const subsetKeys = subset.rows.map(r => normalize(r[keyField])).filter(k => k !== '');
       const matchedKeys = subsetKeys.filter(k => fullKeys.includes(k));
       const remaining = full.rows.filter(r => {
         const val = normalize(r[keyField]);
         return val && !subsetKeys.includes(val);
       });
       const remainingKeys = remaining.map(r => normalize(r[keyField]));
+
+      console.log("Full Keys:", fullKeys);
+      console.log("Subset Keys:", subsetKeys);
+      console.log("Matched Keys:", matchedKeys);
+      console.log("Remaining Keys:", remainingKeys);
 
       lastHeaders = full.headers;
       lastRemaining = remaining;
