@@ -43,6 +43,10 @@
   let lastHeaders = [];
   let lastRemaining = [];
 
+  function normalize(val) {
+    return String(val || '').trim();
+  }
+
   function parseCSV(text) {
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',').map(h => h.trim());
@@ -54,8 +58,8 @@
   }
 
   function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
-    const fullKeys = fullRows.map(r => String(r[keyField] || '').trim());
-    const subsetKeys = subsetRows.map(r => String(r[keyField] || '').trim());
+    const fullKeys = fullRows.map(r => normalize(r[keyField]));
+    const subsetKeys = subsetRows.map(r => normalize(r[keyField]));
 
     const fullSet = new Set(fullKeys);
     const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
@@ -180,14 +184,14 @@
 
       console.log(`Using key field: "${keyField}"`);
 
-      const fullKeys = full.rows.map(r => String(r[keyField] || '').trim());
-      const subsetKeys = subset.rows.map(r => String(r[keyField] || '').trim());
+      const fullKeys = full.rows.map(r => normalize(r[keyField]));
+      const subsetKeys = subset.rows.map(r => normalize(r[keyField]));
       const matchedKeys = subsetKeys.filter(k => fullKeys.includes(k));
       const remaining = full.rows.filter(r => {
-        const val = String(r[keyField] || '').trim();
+        const val = normalize(r[keyField]);
         return val && !subsetKeys.includes(val);
       });
-      const remainingKeys = remaining.map(r => String(r[keyField] || '').trim());
+      const remainingKeys = remaining.map(r => normalize(r[keyField]));
 
       lastHeaders = full.headers;
       lastRemaining = remaining;
