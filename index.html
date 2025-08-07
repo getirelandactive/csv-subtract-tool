@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool</title>
+  <title>CSV Subtract Tool v1.2</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool</h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.2</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -131,28 +131,21 @@
         const full = parseCSV(fullText);
         const subset = parseCSV(subsetText);
 
-        const possibleKeys = [
-          'objectid',
-          'objectid_1',
-          'id',
-          'uid',
-          'featureid',
-          'recordid',
-          'roll number',
-          'rollnumber'
-        ];
+        const keyField = 'objectid';
 
-        const keyField = full.headers.find(h =>
-          possibleKeys.includes(h.trim().toLowerCase())
-        );
-
-        if (!keyField) {
-          alert('Could not find a valid key field in the full dataset.');
+        if (!full.headers.includes(keyField)) {
+          alert(`Key field "${keyField}" not found in full dataset.`);
           console.warn('Available headers:', full.headers);
           return;
         }
 
-        console.log(`Matched key field: "${keyField}"`);
+        if (!subset.headers.includes(keyField)) {
+          alert(`Key field "${keyField}" not found in subset dataset.`);
+          console.warn('Available headers:', subset.headers);
+          return;
+        }
+
+        console.log(`Using key field: "${keyField}"`);
 
         const subsetKeys = new Set(
           subset.rows.map(r => (r[keyField] || '').trim().toLowerCase())
