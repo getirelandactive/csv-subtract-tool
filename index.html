@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.3</title>
+  <title>CSV Subtract Tool v1.4</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.3</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.4</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -38,6 +38,7 @@
 
   <div id="summary-container"></div>
   <div id="output-container"></div>
+  <div id="diagnostic-container"></div>
 
   <script>
     let lastHeaders = [];
@@ -58,20 +59,13 @@
       return headers.find(h => h.trim().toLowerCase() === lowerTarget);
     }
 
-    function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
-      const fullKeys = fullRows.map(r => (r[keyField] || '').trim().toLowerCase());
-      const subsetKeys = subsetRows.map(r => (r[keyField] || '').trim().toLowerCase());
-
-      const fullSet = new Set(fullKeys);
-      const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
-      const duplicates = fullKeys.length - fullSet.size;
-
+    function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows, matchedKeys, duplicateKeys) {
       const summaryData = {
         'Matched Field': keyField,
         'Records in Full Dataset': fullRows.length,
         'Records in Subset': subsetRows.length,
         'Matching Keys': matchedKeys.length,
-        'Duplicate Keys in Full': duplicates,
+        'Duplicate Keys in Full': duplicateKeys.length,
         'Remaining Records': remainingRows.length
       };
 
@@ -123,6 +117,36 @@
       container.appendChild(table);
     }
 
+    function generateDiagnosticTable(duplicateKeys, unmatchedKeys) {
+      const container = document.getElementById('diagnostic-container');
+      container.innerHTML = '<h3>🧪 Diagnostic Report</h3>';
+
+      const table = document.createElement('table');
+      table.className = 'summary-table';
+
+      const headerRow = document.createElement('tr');
+      ['Issue Type', 'Key Value'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headerRow.appendChild(th);
+      });
+      table.appendChild(headerRow);
+
+      duplicateKeys.forEach(key => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>Duplicate in Full</td><td>${key}</td>`;
+        table.appendChild(tr);
+      });
+
+      unmatchedKeys.forEach(key => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>Unmatched in Subset</td><td>${key}</td>`;
+        table.appendChild(tr);
+      });
+
+      container.appendChild(table);
+    }
+
     function processCSV() {
       const fullFile = document.getElementById('fullFile').files[0];
       const subsetFile = document.getElementById('subsetFile').files[0];
@@ -140,34 +164,38 @@
         const fullKeyField = findHeader(full.headers, keyFieldName);
         const subsetKeyField = findHeader(subset.headers, keyFieldName);
 
-        if (!fullKeyField) {
-          alert(`Key field "${keyFieldName}" not found in full dataset.`);
-          console.warn('Available headers:', full.headers);
-          return;
-        }
-
-        if (!subsetKeyField) {
-          alert(`Key field "${keyFieldName}" not found in subset dataset.`);
-          console.warn('Available headers:', subset.headers);
+        if (!fullKeyField || !subsetKeyField) {
+          alert(`Key field "${keyFieldName}" not found in one of the datasets.`);
+          console.warn('Full headers:', full.headers);
+          console.warn('Subset headers:', subset.headers);
           return;
         }
 
         console.log(`Using key field: "${fullKeyField}"`);
 
-        const subsetKeys = new Set(
-          subset.rows.map(r => (r[subsetKeyField] || '').trim().toLowerCase())
-        );
+        const fullKeys = full.rows.map(r => (r[fullKeyField] || '').trim().toLowerCase());
+        const subsetKeys = subset.rows.map(r => (r[subsetKeyField] || '').trim().toLowerCase());
+
+        const fullSet = new Set(fullKeys);
+        const subsetSet = new Set(subsetKeys);
+
+        const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
+        const unmatchedKeys = subsetKeys.filter(k => !fullSet.has(k));
+
+        const duplicates = fullKeys.filter((k, i, arr) => arr.indexOf(k) !== i);
+        const duplicateSet = [...new Set(duplicates)];
 
         const remaining = full.rows.filter(r => {
           const val = (r[fullKeyField] || '').trim().toLowerCase();
-          return val && !subsetKeys.has(val);
+          return val && !subsetSet.has(val);
         });
 
         lastHeaders = full.headers;
         lastRemaining = remaining;
 
-        generateSummaryTable(full.rows, subset.rows, fullKeyField, remaining);
+        generateSummaryTable(full.rows, subset.rows, fullKeyField, remaining, matchedKeys, duplicateSet);
         displayTable(full.headers, remaining);
+        generateDiagnosticTable(duplicateSet, unmatchedKeys);
         document.getElementById('downloadBtn').style.display = 'inline-block';
       });
     }
@@ -191,6 +219,7 @@
       document.getElementById('subsetFile').value = '';
       document.getElementById('summary-container').innerHTML = '';
       document.getElementById('output-container').innerHTML = '';
+      document.getElementById('diagnostic-container').innerHTML = '';
       document.getElementById('downloadBtn').style.display = 'none';
       lastHeaders = [];
       lastRemaining = [];
