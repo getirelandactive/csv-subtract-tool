@@ -30,7 +30,6 @@
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
   <label>Subset CSV: <input type="file" id="subsetFile" accept=".csv" /></label><br><br>
-  <label>Key Field: <input type="text" id="keyField" value="ObjectId" /></label><br><br>
 
   <div class="button-row">
     <button onclick="processCSV()">Process</button>
@@ -55,8 +54,8 @@
     }
 
     function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
-      const fullKeys = fullRows.map(r => r[keyField]?.trim().toLowerCase());
-      const subsetKeys = subsetRows.map(r => r[keyField]?.trim().toLowerCase());
+      const fullKeys = fullRows.map(r => (r[keyField] || '').trim().toLowerCase());
+      const subsetKeys = subsetRows.map(r => (r[keyField] || '').trim().toLowerCase());
 
       const fullSet = new Set(fullKeys);
       const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
@@ -122,10 +121,9 @@
     function processCSV() {
       const fullFile = document.getElementById('fullFile').files[0];
       const subsetFile = document.getElementById('subsetFile').files[0];
-      const keyField = document.getElementById('keyField').value.trim();
 
-      if (!fullFile || !subsetFile || !keyField) {
-        alert('Please select both files and enter a key field.');
+      if (!fullFile || !subsetFile) {
+        alert('Please select both files.');
         return;
       }
 
@@ -133,13 +131,36 @@
         const full = parseCSV(fullText);
         const subset = parseCSV(subsetText);
 
+        const possibleKeys = [
+          'objectid',
+          'objectid_1',
+          'id',
+          'uid',
+          'featureid',
+          'recordid',
+          'roll number',
+          'rollnumber'
+        ];
+
+        const keyField = full.headers.find(h =>
+          possibleKeys.includes(h.trim().toLowerCase())
+        );
+
+        if (!keyField) {
+          alert('Could not find a valid key field in the full dataset.');
+          console.warn('Available headers:', full.headers);
+          return;
+        }
+
+        console.log(`Matched key field: "${keyField}"`);
+
         const subsetKeys = new Set(
-          subset.rows.map(r => r[keyField]?.trim().toLowerCase())
+          subset.rows.map(r => (r[keyField] || '').trim().toLowerCase())
         );
 
         const remaining = full.rows.filter(r => {
-          const val = r[keyField]?.trim().toLowerCase();
-          return !subsetKeys.has(val);
+          const val = (r[keyField] || '').trim().toLowerCase();
+          return val && !subsetKeys.has(val);
         });
 
         lastHeaders = full.headers;
@@ -168,7 +189,6 @@
     function refreshTool() {
       document.getElementById('fullFile').value = '';
       document.getElementById('subsetFile').value = '';
-      document.getElementById('keyField').value = 'ObjectId';
       document.getElementById('summary-container').innerHTML = '';
       document.getElementById('output-container').innerHTML = '';
       document.getElementById('downloadBtn').style.display = 'none';
