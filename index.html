@@ -54,8 +54,8 @@
     }
 
     function generateSummaryTable(fullRows, subsetRows, keyField, remainingRows) {
-      const fullKeys = fullRows.map(r => (r[keyField] || '').trim().toLowerCase());
-      const subsetKeys = subsetRows.map(r => (r[keyField] || '').trim().toLowerCase());
+      const fullKeys = fullRows.map(r => (r[keyField] || '').trim());
+      const subsetKeys = subsetRows.map(r => (r[keyField] || '').trim());
 
       const fullSet = new Set(fullKeys);
       const matchedKeys = subsetKeys.filter(k => fullSet.has(k));
@@ -155,11 +155,11 @@
         console.log(`Matched key field: "${keyField}"`);
 
         const subsetKeys = new Set(
-          subset.rows.map(r => (r[keyField] || '').trim().toLowerCase())
+          subset.rows.map(r => (r[keyField] || '').trim())
         );
 
         const remaining = full.rows.filter(r => {
-          const val = (r[keyField] || '').trim().toLowerCase();
+          const val = (r[keyField] || '').trim();
           return val && !subsetKeys.has(val);
         });
 
