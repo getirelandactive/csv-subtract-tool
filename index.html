@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size:0.8em; color:#666;">(v2.4b)</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size:0.8em; color:#666;">(v2.4c)</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -192,11 +192,6 @@
         return val && !subsetKeys.includes(val);
       });
       const remainingKeys = remaining.map(r => normalize(r[keyField]));
-
-      console.log("Full Keys:", fullKeys);
-      console.log("Subset Keys:", subsetKeys);
-      console.log("Matched Keys:", matchedKeys);
-      console.log("Remaining Keys:", remainingKeys);
 
       lastHeaders = full.headers;
       lastRemaining = remaining;
