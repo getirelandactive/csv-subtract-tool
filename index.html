@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.8</title>
+  <title>CSV Subtract Tool v1.9</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -29,7 +29,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.8</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.9</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -227,17 +227,19 @@
 
     function generateDownloadLink() {
       const csvContent = [lastHeaders.join(',')].concat(
-        lastRemaining.map(row => lastHeaders.map(h => `"${(row[h] ?? '').replace(/"/g, '""')}"`).join(','))
+        lastRemaining.map(row =>
+          lastHeaders.map(h => `"${(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
+        )
       ).join('\n');
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
+      const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
       const link = document.getElementById('downloadLink');
-      link.href = url;
+      link.href = encodedUri;
+      link.download = 'remaining-records.csv';
       link.style.display = 'inline-block';
     }
 
-    function refreshTool() {
+       function refreshTool() {
       document.getElementById('fullFile').value = '';
       document.getElementById('subsetFile').value = '';
       document.getElementById('summary-container').innerHTML = '';
@@ -250,3 +252,4 @@
   </script>
 </body>
 </html>
+
