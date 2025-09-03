@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.6</title>
+  <title>CSV Subtract Tool v1.7</title>
   <style>
     body { font-family: sans-serif; padding: 2em; position: relative; }
     table { border-collapse: collapse; margin-top: 1em; }
@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.6</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.7</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -40,12 +40,16 @@
   <div id="output-container"></div>
   <div id="diagnostic-container"></div>
 
-  <!-- PapaParse CDN -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <script>
     let lastHeaders = [];
     let lastRemaining = [];
+
+    const keyFieldVariants = [
+      'objectid', 'objectid_1', 'objectid1', 'objectid2',
+      'object_id', 'objectid.', 'objectid#', 'objectid '
+    ];
 
     function parseCSVWithPapa(text) {
       const parsed = Papa.parse(text, {
@@ -58,9 +62,13 @@
       };
     }
 
-    function findHeader(headers, targetName) {
-      const lowerTarget = targetName.toLowerCase();
-      return headers.find(h => h.trim().toLowerCase() === lowerTarget);
+    function findFlexibleKey(headers) {
+      const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
+      for (const variant of keyFieldVariants) {
+        const index = normalizedHeaders.indexOf(variant);
+        if (index !== -1) return headers[index]; // Return original header name
+      }
+      return null;
     }
 
     function findDuplicates(keys) {
@@ -172,12 +180,11 @@
         const full = parseCSVWithPapa(fullText);
         const subset = parseCSVWithPapa(subsetText);
 
-        const keyFieldName = 'objectid';
-        const fullKeyField = findHeader(full.headers, keyFieldName);
-        const subsetKeyField = findHeader(subset.headers, keyFieldName);
+        const fullKeyField = findFlexibleKey(full.headers);
+        const subsetKeyField = findFlexibleKey(subset.headers);
 
         if (!fullKeyField || !subsetKeyField) {
-          alert(`Key field "${keyFieldName}" not found in one of the datasets.`);
+          alert(`No matching key field found. Expected one of: ${keyFieldVariants.join(', ')}`);
           console.warn('Full headers:', full.headers);
           console.warn('Subset headers:', subset.headers);
           return;
@@ -199,6 +206,11 @@
           const val = (r[fullKeyField] || '').trim().toLowerCase();
           return val && !subsetSet.has(val);
         });
+
+        if (remaining.length === 0) {
+          alert('No remaining records found. Check that your key fields match and files are correct.');
+          console.warn('No remaining records after subtraction.');
+        }
 
         lastHeaders = full.headers;
         lastRemaining = remaining;
@@ -224,7 +236,7 @@
       URL.revokeObjectURL(url);
     }
 
-    function refreshTool() {
+   function refreshTool() {
       document.getElementById('fullFile').value = '';
       document.getElementById('subsetFile').value = '';
       document.getElementById('summary-container').innerHTML = '';
@@ -237,5 +249,4 @@
   </script>
 </body>
 </html>
-
-
+     
