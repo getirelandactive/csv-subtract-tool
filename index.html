@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Subtract Tool v1.9</title>
+  <title>CSV Subtract Tool v2.0</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; position: relative; }
-    table { border-collapse: collapse; margin-top: 1em; }
+    body { font-family: sans-serif; padding: 2em; position: relative; max-width: 900px; margin: auto; }
+    table { border-collapse: collapse; margin-top: 1em; width: 100%; }
     td, th { border: 1px solid #ccc; padding: 6px 12px; }
     th { background-color: #f0f0f0; }
     .summary-table td:first-child { font-weight: bold; background-color: #f9f9f9; }
@@ -29,7 +29,7 @@
   </style>
 </head>
 <body>
-  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v1.9d</span></h1>
+  <h1>CSV Subtract Tool <span style="font-size: 0.6em; color: #666;">v2.0</span></h1>
   <button id="refreshBtn" onclick="refreshTool()">🔄 Refresh</button>
 
   <label>Full CSV: <input type="file" id="fullFile" accept=".csv" /></label><br><br>
@@ -232,24 +232,22 @@
         )
       ).join('\n');
 
-      const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
       const link = document.getElementById('downloadLink');
-      link.href = encodedUri;
-      link.download = 'remaining-records.csv';
+      link.href = url;
       link.style.display = 'inline-block';
     }
 
-      function refreshTool() {
+    function refreshTool() {
       document.getElementById('fullFile').value = '';
       document.getElementById('subsetFile').value = '';
       document.getElementById('summary-container').innerHTML = '';
       document.getElementById('output-container').innerHTML = '';
       document.getElementById('diagnostic-container').innerHTML = '';
       document.getElementById('downloadLink').style.display = 'none';
-      lastHeaders = [];
-      lastRemaining = [];
     }
   </script>
 </body>
 </html>
-
