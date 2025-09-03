@@ -235,14 +235,18 @@ function generateDownloadLink() {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
 
-  const link = document.getElementById('downloadLink');
-  link.href = url;
-  link.download = 'remaining-records.csv';
-  link.style.display = 'inline-block';
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.src = url;
+  document.body.appendChild(iframe);
 
-  // Optional: revoke URL after short delay to clean up memory
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  // Clean up after a short delay
+  setTimeout(() => {
+    document.body.removeChild(iframe);
+    URL.revokeObjectURL(url);
+  }, 2000);
 }
+
 
 
        function refreshTool() {
@@ -258,5 +262,6 @@ function generateDownloadLink() {
   </script>
 </body>
 </html>
+
 
 
